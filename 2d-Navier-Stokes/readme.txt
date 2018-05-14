@@ -1,0 +1,1 @@
+ g++ Final_project.cpp -lfftw3 -lm -llapack -lblas

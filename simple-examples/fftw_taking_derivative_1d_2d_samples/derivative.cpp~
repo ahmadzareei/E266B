@@ -1,0 +1,85 @@
+#include<iostream>
+#include<fstream>
+#include<fftw3.h>
+#include<cmath>
+
+using namespace std;
+
+
+int main(){
+  
+  ofstream out1, out2;
+  out1.open("sin.dat");
+  out2.open("6picos.dat");
+
+  //N is Number of points, frequency of sampling
+  int  N=64;
+  // out=> data in complex fourier mode which is complex[N/2+1]
+  // this size is because of Real To Complex transformation
+  fftw_complex *out;
+  // in=> real data in physical space, double[N];
+  double *in;
+
+  // L is the length of domain, in this case 2*PI
+  // We will map this length to 0-2*PI
+  double L=2*M_PI;
+
+  //we have two plans for fft, one going to fourier space
+  // and one is for comming back to physical space
+  fftw_plan fft_plan,ifft_paln;
+
+  // we are allocating memory in this part
+  // out is type complex => fftw_complex
+  out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*(N/2+1));
+  // in is type double
+  in =(double*) fftw_malloc(sizeof(double)*N);
+  
+  // fft_plan is for going to fourier space, with real to complex transformation
+  fft_plan = fftw_plan_dft_r2c_1d(N, in, out, FFTW_MEASURE);
+  // ifft_plan is for comming back to real physical spce with c2r
+  ifft_paln= fftw_plan_dft_c2r_1d(N,out,in, FFTW_MEASURE);
+
+  //initializing the data with function of y=sin(x) for 0<x<2*PI
+  for(int i=0;i<N;i++){
+    in[i] = sin(L*(double)i/(double)N);
+    out1<<L*(double)(i)/(double)N<<"\t"<<in[i]<<"\n";
+  }
+
+  //running the fft plan
+  fftw_execute(fft_plan);
+
+  //here we take the derivative in fourier space,
+  // we will multiply each complex number by value of j*i
+  // in fourier space we will have f(x_j) = sum{n=-inf,+inf} a_n exp(i*n*x/L*2*PI)
+  // in here L = 2PI => f(x_j) = sum{n=-inf,+inf} a_n exp(inx)
+  // df/dx = sum (in)* a_n exp(inx)
+  double temp;
+  for(int i=0;i<(N/2+1);i++){
+    temp = out[i][0];
+    out[i][0] = -out[i][1]*(double)i;///(double)N*2.0*M_PI;    
+    out[i][1] = temp*(double)i;///(double)N*2.0*M_PI;
+}
+
+  
+  // ifft of the function
+  fftw_execute(ifft_paln);
+  
+  // saving the results
+  for(int i=0;i<N;i++)
+    out2<<2*M_PI*(double)(i)/(double)N<<"\t"<<in[i]/double(N)<<"\n";
+  
+  //closing the files
+  out1.close();
+  out2.close();
+  
+  // removing plans
+  fftw_destroy_plan(fft_plan);
+  fftw_destroy_plan(ifft_paln);
+  // removing double and complex arrays
+  fftw_free(in);
+  fftw_free(out);
+
+
+  return 0;
+
+}
